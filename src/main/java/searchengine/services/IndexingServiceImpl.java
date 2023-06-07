@@ -6,7 +6,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.statistics.TreeSite;
@@ -150,8 +149,6 @@ public class IndexingServiceImpl implements IndexingService {
 
     public boolean hasPage(String shortcut) {
         Page page = pageRepository.findPageByPath(shortcut);
-
-//        if ()
         return page == null;
     }
 

@@ -14,7 +14,6 @@ public class WebSite {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    @Column(name = "path", columnDefinition = "TEXT", nullable = false)
     private long id;
 
     @Enumerated(EnumType.STRING)
