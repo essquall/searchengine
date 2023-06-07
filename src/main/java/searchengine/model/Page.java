@@ -6,7 +6,6 @@ import lombok.Setter;
 import javax.persistence.*;
 
 @Entity
-//@Table(name = "pages", indexes = @Index(name = "pathPage", columnList = "path"))
 @Table(name = "pages")
 @Getter
 @Setter
@@ -19,8 +18,6 @@ public class Page {
     @ManyToOne(fetch = FetchType.LAZY)
     private WebSite site;
 
-//    @Column(name = "path", nullable = false, unique = true, columnDefinition = "VARCHAR(255)")
-//    @Column(name = "path", nullable = false, columnDefinition = "TEXT, UNIQUE KEY pathPage Index(path(512))")
     @Column(name = "path", nullable = false, columnDefinition = "TEXT")
     private String path;
 

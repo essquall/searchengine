@@ -6,6 +6,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.statistics.TreeSite;
@@ -28,7 +29,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class IndexingServiceImpl implements IndexingService {
     //    Delete path "/" from database
     private SitesList configSites;
-    private IndexingService service;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private static ConcurrentSkipListSet<String> children;
@@ -67,6 +67,7 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private void startPassing(Site configSite) {
+        IndexingServiceImpl service = new IndexingServiceImpl(configSites, siteRepository, pageRepository);
         new Thread(() -> {
             TreeSite treeSite = new TreeSite(configSite.getUrl());
             PassSite passing = new PassSite(treeSite, service);
@@ -82,6 +83,7 @@ public class IndexingServiceImpl implements IndexingService {
                     .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
                     .referrer("http://www.google.com")
                     .get();
+//            Elements elements = document.select("body").select("a");
             Elements elements = document.select("body").select("a");
             for (Element element : elements) {
                 String childPath = element.absUrl("href");
@@ -148,7 +150,9 @@ public class IndexingServiceImpl implements IndexingService {
 
     public boolean hasPage(String shortcut) {
         Page page = pageRepository.findPageByPath(shortcut);
-        return page != null;
+
+//        if ()
+        return page == null;
     }
 
     private void updateStatusTime(WebSite site) {

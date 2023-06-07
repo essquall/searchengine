@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Component
+//@Component
 @Getter
 public class TreeSite {
 

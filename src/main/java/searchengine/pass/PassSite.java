@@ -1,6 +1,5 @@
 package searchengine.pass;
 
-import org.springframework.stereotype.Component;
 import searchengine.dto.statistics.TreeSite;
 import searchengine.services.IndexingService;
 
@@ -10,11 +9,11 @@ import java.util.List;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.RecursiveAction;
 
-@Component
 public class PassSite extends RecursiveAction {
 
     private TreeSite treeSite;
-    private IndexingService service;
+    private final IndexingService service;
+    private static ConcurrentSkipListSet<String> pool = new ConcurrentSkipListSet<>();
 
     public PassSite(TreeSite treeSite, IndexingService service) {
         this.treeSite = treeSite;
@@ -28,7 +27,7 @@ public class PassSite extends RecursiveAction {
         try {
             for (String child : children) {
                 String rootURL = service.getRootURL(child);
-                String shortcut = service.cutRootURL(url, child);
+                String shortcut = service.cutRootURL(rootURL, child);
                 if (service.hasPage(shortcut)) {
                     service.savePage(rootURL, child);
                     treeSite.addChildLink(new TreeSite(child));
