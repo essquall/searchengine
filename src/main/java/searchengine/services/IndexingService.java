@@ -1,14 +1,17 @@
 package searchengine.services;
 
+import searchengine.dto.indexing.IndexingResponse;
+
 import java.io.IOException;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public interface IndexingService {
-    boolean isIndexing();
-    ConcurrentSkipListSet<String> getChildren(String url);
-    String getRootURL(String url);
-    String cutRootURL(String url, String child);
-    void savePage(String url, String childPath) throws IOException;
-    boolean hasPage(String shortcut);
+    IndexingResponse startIndexing();
+    IndexingResponse stopIndexing();
+    IndexingResponse indexPage(String pagePath);
+    ConcurrentSkipListSet<String> collectChildren(String url);
+    String findRootUrl(String url);
+    String cutRootUrl(String url, String child);
+    void savePage(String child, String url, String shortcut) throws IOException;
 
-    }
+}

@@ -8,8 +8,6 @@ import org.springframework.stereotype.Component;
 @Getter
 @Component
 public class Site {
-    //    @Value("{indexing-settings.sites.url}")
     private String url;
-    //    @Value("{indexing-settings.sites.name}")
     private String name;
 }

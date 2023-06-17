@@ -4,9 +4,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
+import javax.persistence.Index;
 
 @Entity
-@Table(name = "pages")
+@Table(name = "pages", indexes = @Index(columnList = "path"))
 @Getter
 @Setter
 public class Page {
@@ -16,14 +17,13 @@ public class Page {
     private long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private WebSite site;
+    private SiteEntity site;
 
-    @Column(name = "path", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "path", nullable = false, unique = true, columnDefinition = "VARCHAR(300)")
     private String path;
 
     private int code;
 
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
-
 }

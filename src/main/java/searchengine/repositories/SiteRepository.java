@@ -3,11 +3,16 @@ package searchengine.repositories;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
-import searchengine.model.WebSite;
+import searchengine.model.SiteEntity;
+
+import java.util.List;
 
 @Repository
-public interface SiteRepository extends JpaRepository<WebSite, Long> {
+public interface SiteRepository extends JpaRepository<SiteEntity, Long> {
 
-    @Query(value = "SELECT * from sites where url LIKE %:url%", nativeQuery = true)
-    WebSite findSiteByUrl(String url);
+    @Query(value = "SELECT * FROM sites where url = :url", nativeQuery = true)
+    SiteEntity findSiteByUrl(String url);
+
+    @Query(value = "SELECT * FROM sites where type != :INDEXED", nativeQuery = true)
+    List<SiteEntity> findNotIndexedSites();
 }
