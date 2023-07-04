@@ -31,5 +31,4 @@ public class SiteEntity {
 
     @Column(nullable = false, columnDefinition = "VARCHAR(255)")
     private String name;
-
 }

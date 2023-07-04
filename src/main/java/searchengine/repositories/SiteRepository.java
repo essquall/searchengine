@@ -13,6 +13,6 @@ public interface SiteRepository extends JpaRepository<SiteEntity, Long> {
     @Query(value = "SELECT * FROM sites where url = :url", nativeQuery = true)
     SiteEntity findSiteByUrl(String url);
 
-    @Query(value = "SELECT * FROM sites where type != :INDEXED", nativeQuery = true)
+    @Query(value = "SELECT * FROM sites where type != 'INDEXED'", nativeQuery = true)
     List<SiteEntity> findNotIndexedSites();
 }

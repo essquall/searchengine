@@ -2,9 +2,12 @@ package searchengine.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import searchengine.config.Site;
 import searchengine.dto.indexing.IndexingResponse;
+import searchengine.dto.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.IndexingService;
+import searchengine.services.SearchService;
 import searchengine.services.StatisticsService;
 
 @RestController
@@ -13,10 +16,12 @@ public class ApiController {
 
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
+    private final SearchService searchService;
 
-    public ApiController(StatisticsService statisticsService, IndexingService indexingService) {
+    public ApiController(StatisticsService statisticsService, IndexingService indexingService, SearchService searchService) {
         this.statisticsService = statisticsService;
         this.indexingService = indexingService;
+        this.searchService = searchService;
     }
 
     @GetMapping("/statistics")
@@ -37,5 +42,13 @@ public class ApiController {
     @PostMapping("/indexPage")
     public ResponseEntity<IndexingResponse> indexPage(@RequestBody String pagePath) {
         return ResponseEntity.ok(indexingService.indexPage(pagePath));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<SearchResponse> search(@RequestParam final String query,
+                                                 @RequestParam(required = false) final Site site,
+                                                 @RequestParam final Integer offset,
+                                                 @RequestParam final Integer limit) {
+        return ResponseEntity.ok(searchService.search(query, site, offset, limit));
     }
 }

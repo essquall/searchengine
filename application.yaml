@@ -22,5 +22,5 @@ indexing-settings:
 #      name: Skillbox
     - url: http://www.playback.ru/
       name: PlayBack.Ru
-    - url: https://volochek.life/
-      name: Volchara.Ru
+#    - url: https://volochek.life/
+#      name: Volchara.Ru

@@ -12,6 +12,7 @@ import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
+import searchengine.services.StatisticsService;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 item.setStatus(siteEntity.getType().name());
                 item.setError(siteEntity.getLastError());
                 item.setStatusTime(Timestamp.valueOf(siteEntity.getStatusTime()).getTime());
+                total.setIndexing(true);
                 total.setPages(total.getPages() + pages);
                 total.setLemmas(total.getLemmas() + lemmas);
                 detailed.add(item);

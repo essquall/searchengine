@@ -1,8 +1,8 @@
-package searchengine.searcher;
+package searchengine.utils;
 
-import lombok.RequiredArgsConstructor;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -10,18 +10,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-@RequiredArgsConstructor
-public class LemmaSearcher {
+@Component
+public class LemmaCollector {
 
-    LuceneMorphology luceneMorph;
+    private LuceneMorphology luceneMorph;
     private static final String[] particles = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ"};
 
     public Map<String, Integer> collectLemmas(String text) {
-        try {
-            luceneMorph = new RussianLuceneMorphology();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        createRussianMorphology();
 
         HashMap<String, Integer> lemmas = new HashMap<>();
         String[] words = splitIntoWords(text);
@@ -34,11 +30,11 @@ public class LemmaSearcher {
             if (hasWordsOfParticle(morphInfoWords)) {
                 continue;
             }
-            List<String> normalFormsWords = luceneMorph.getNormalForms(word);
-            if (normalFormsWords.isEmpty()) {
+            List<String> normalFormWords = luceneMorph.getNormalForms(word);
+            if (normalFormWords.isEmpty()) {
                 continue;
             }
-            String normalWord = normalFormsWords.get(0);
+            String normalWord = normalFormWords.get(0);
             if (lemmas.containsKey(normalWord)) {
                 lemmas.put(normalWord, lemmas.get(normalWord) + 1);
             } else {
@@ -48,7 +44,7 @@ public class LemmaSearcher {
         return lemmas;
     }
 
-    private boolean hasWordsOfParticle(List<String> list) {
+    public boolean hasWordsOfParticle(List<String> list) {
         for (String word : list) {
             if (hasWordOfParticle(word)) {
                 return true;
@@ -71,5 +67,14 @@ public class LemmaSearcher {
                 .replaceAll("([^а-я\\s])", " ")
                 .trim()
                 .split("\\s+");
+    }
+
+    public LuceneMorphology createRussianMorphology() {
+        try {
+            luceneMorph = new RussianLuceneMorphology();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return luceneMorph;
     }
 }

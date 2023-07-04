@@ -7,11 +7,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Getter
 public class TreeSite {
 
-    private String rootURL;
+    private String rootUrl;
     private CopyOnWriteArrayList<TreeSite> children;
 
-    public TreeSite(String rootURL) {
-        this.rootURL = rootURL;
+    public TreeSite(String rootUrl) {
+        this.rootUrl = rootUrl;
         children = new CopyOnWriteArrayList<>();
     }
 
