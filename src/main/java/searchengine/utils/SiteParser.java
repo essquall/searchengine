@@ -43,7 +43,7 @@ public class SiteParser extends RecursiveAction {
 
     public ConcurrentSkipListSet<String> collectChildren(String url) {
         children = new ConcurrentSkipListSet<>();
-        Document document = service.findDocument(url);
+        Document document = service.getDocument(url);
         Elements elements = document.select("body").select("a");
         for (Element element : elements) {
             String child = element.absUrl("href");

@@ -12,6 +12,5 @@ public interface IndexingService {
 
     void savePage(String child);
 
-    Document findDocument(String url);
-
+    Document getDocument(String url);
 }

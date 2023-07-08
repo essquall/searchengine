@@ -10,6 +10,6 @@ import java.util.List;
 @Repository
 public interface LemmaRepository extends JpaRepository<Lemma, Long> {
 
-    @Query(value = "SELECT * from lemmas where lemma = :nameOfLemma", nativeQuery = true)
-    Lemma findLemmaByName(String nameOfLemma);
+    @Query(value = "SELECT * from lemmas where lemma = :lemmaName", nativeQuery = true)
+    Lemma findLemmaByName(String lemmaName);
 }

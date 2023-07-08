@@ -33,7 +33,7 @@ public class SnippetBuilder {
             String sourceForm = contentWordForms.get(lemma);
             int startIndex = rusContent.indexOf(sourceForm);
 
-            int limitLengthLine = 100;
+            int limitLengthLine = 70;
             String snippetLine = rusContent.substring(startIndex);
             if (snippetLine.length() > limitLengthLine) {
                 snippetLine = snippetLine.substring(0, limitLengthLine);

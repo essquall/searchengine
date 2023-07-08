@@ -4,10 +4,11 @@ import lombok.Data;
 import searchengine.config.Site;
 
 @Data
-public class SearchWordsRequest {
+public class SearchRequest {
     private String query;
     private Site site;
-    private Integer offset;
-    private Integer limit;
+    private int offset;
+    private int limit;
+
 
 }

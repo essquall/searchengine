@@ -7,6 +7,7 @@ import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.config.UserAgent;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.indexing.TreeSite;
 import searchengine.model.*;
@@ -33,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class IndexingServiceImpl implements IndexingService {
 
     private final SitesList sites;
+    private final UserAgent agent;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
@@ -43,8 +45,8 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse startIndexing() {
-        isIndexing.set(true);
         clearData();
+        isIndexing.set(true);
         sites.getSites().forEach(site -> {
             saveSite(site);
             startParseSite(site);
@@ -87,7 +89,10 @@ public class IndexingServiceImpl implements IndexingService {
             isContainSite.set(true);
             saveSite(site);
             savePage(path);
+            changeStatusTypeAfterParse(site);
+            isIndexing.set(false);
         }
+
         IndexingResponse response = new IndexingResponse();
         if (isContainSite.get()) {
             response.setResult(true);
@@ -117,76 +122,85 @@ public class IndexingServiceImpl implements IndexingService {
         }
         String rootUrl = findRootUrl(path);
         String shortcut = cutRootUrl(rootUrl, path);
-        Document document = findDocument(path);
-        Connection.Response response = Jsoup.connect(path).response();//??????
-        SiteEntity newSite = siteRepository.findSiteByUrl(rootUrl);
+        try {
+            Connection.Response response = Jsoup.connect(path)
+                    .userAgent(agent.getUserAgent())
+                    .referrer(agent.getReferrer()).execute();
+            Document document = response.parse();
+            SiteEntity site = siteRepository.findSiteByUrl(rootUrl);
 
-        Page page = new Page();
-        page.setPath(shortcut);
-        page.setSite(newSite);
-        page.setContent(document.html());
-        page.setCode(response.statusCode());//??????
-        updateStatusTime(newSite);
-        pageRepository.save(page);
-        saveLemmaAndIndex(page);
-    }
+            Page page = new Page();
+            page.setPath(shortcut);
+            page.setSite(site);
+            page.setContent(document.html());
+            page.setCode(response.statusCode());
+            updateStatusTime(site);
+            pageRepository.save(page);
 
-    private void saveLemmaAndIndex(Page page) {
-        if (!checkResponseCode(page)) {
-            LemmaCollector searcher = new LemmaCollector();
-            Map<String, Integer> lemmas = searcher.collectLemmas(page.getContent());
-            lemmas.forEach((name, count) -> {
-                Lemma lemma = lemmaRepository.findLemmaByName(name);
-                if (lemma == null) {
-                    lemma = new Lemma();
-                    lemma.setLemma(name);
-                    lemma.setSite(page.getSite());
-                    lemma.setFrequency(1);
-                } else {
-                    lemma.setFrequency(lemma.getFrequency() + 1);
-                }
-                lemmaRepository.save(lemma);
-                Index index = new Index();
-                index.setLemma(lemma);
-                index.setLemmasCount(count);
-                index.setPage(page);
-                indexRepository.save(index);
-            });
+            if (!checkResponseCode(page)) {
+                saveLemmaAndIndex(page);
+            }
+        } catch (IOException e) {
+            System.out.println(e + " " + path);
+            handleLastError(path);
         }
     }
 
-    private void startParseSite(Site site) {
-        service = new IndexingServiceImpl(sites, siteRepository, pageRepository, lemmaRepository, indexRepository);//!
+    private void saveLemmaAndIndex(Page page) {
+        LemmaCollector searcher = new LemmaCollector();
+        Map<String, Integer> lemmas = searcher.collectLemmas(page.getContent());
+        lemmas.forEach((name, count) -> {
+            Lemma lemma = lemmaRepository.findLemmaByName(name);
+            if (lemma == null) {
+                lemma = new Lemma();
+                lemma.setLemma(name);
+                lemma.setSite(page.getSite());
+                lemma.setFrequency(1);
+            } else {
+                lemma.setFrequency(lemma.getFrequency() + 1);
+            }
+            lemmaRepository.save(lemma);
+            Index index = new Index();
+            index.setLemma(lemma);
+            index.setLemmasCount(count);
+            index.setPage(page);
+            indexRepository.save(index);
+        });
+    }
 
+    private void startParseSite(Site site) {
+        service = new IndexingServiceImpl(sites, agent, siteRepository, pageRepository, lemmaRepository, indexRepository);//!
         new Thread(() -> {
             TreeSite treeSite = new TreeSite(site.getUrl());
             SiteParser parse = new SiteParser(treeSite, service);
             new ForkJoinPool().invoke(parse);
-
-            if (isIndexing.get()) {
-                SiteEntity siteEntity = siteRepository.findSiteByUrl(site.getUrl());
-                siteEntity.setType(StatusType.INDEXED);
-                siteRepository.save(siteEntity);
-            } else {
-                List<SiteEntity> notIndexedSites = siteRepository.findNotIndexedSites();
-                notIndexedSites.forEach(newSite -> {
-                    newSite.setType(StatusType.FAILED);
-                    newSite.setLastError("Индексация остановлена пользователем");
-                    siteRepository.save(newSite);
-                });
-            }
+            changeStatusTypeAfterParse(site);
+            isIndexing.set(false);
         }).start();
     }
 
+    private void changeStatusTypeAfterParse(Site site) {
+        if (isIndexing.get()) {
+            SiteEntity siteEntity = siteRepository.findSiteByUrl(site.getUrl());
+            siteEntity.setType(StatusType.INDEXED);
+            siteRepository.save(siteEntity);
+        } else {
+            List<SiteEntity> notIndexedSites = siteRepository.findNotIndexedSites();
+            notIndexedSites.forEach(newSite -> {
+                newSite.setType(StatusType.FAILED);
+                newSite.setLastError("Индексация остановлена пользователем");
+                siteRepository.save(newSite);
+            });
+        }
+    }
+
     @Override
-    public Document findDocument(String url) {
+    public Document getDocument(String url) {
         Document document = null;
         try {
-            Thread.sleep(150);
-            document = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
-                    .referrer("http://www.google.com")
-                    .get();
+            Thread.sleep(100);
+            document = Jsoup.connect(url).userAgent(agent.getUserAgent())
+                    .referrer(agent.getReferrer()).get();
         } catch (InterruptedException | SocketTimeoutException | UnknownHostException e) {
             System.out.println(e + " " + url);
         } catch (IOException e) {
@@ -205,10 +219,10 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private void clearData() {
-        pageRepository.deleteAll();
-        siteRepository.deleteAll();
         indexRepository.deleteAll();
         lemmaRepository.deleteAll();
+        pageRepository.deleteAll();
+        siteRepository.deleteAll();
     }
 
     private Site findConfigSite(String url) {
@@ -242,5 +256,4 @@ public class IndexingServiceImpl implements IndexingService {
     private String decodePath(String request) {
         return URLDecoder.decode(request, StandardCharsets.UTF_8).substring(4);
     }
-
 }

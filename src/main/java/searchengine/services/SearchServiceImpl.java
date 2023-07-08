@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.dto.search.DetailedSearchItems;
-import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
+import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
@@ -30,6 +30,9 @@ public class SearchServiceImpl implements SearchService {
 
     @Override
     public SearchResponse search(String query, Site site, int offset, int limit) {
+        SearchResponse response;
+
+        if (query.isEmpty()) response = failedResponse();
         Map<String, Integer> requestLemmas = collector.collectLemmas(query);
 
         List<Lemma> sortedLemmas = sortLemmasByFrequency(requestLemmas);
@@ -39,55 +42,57 @@ public class SearchServiceImpl implements SearchService {
         Map<Page, Float> relPagesRelevance = calculateRelPagesRelevance(absPagesRelevance);
         Map<Float, Page> descSortedRelPagesRelevance = descSortRelPagesRelevance(relPagesRelevance);
 
-        SearchResponse response = convertToResponse(descSortedRelPagesRelevance, query);
+        response = convertToResponse(descSortedRelPagesRelevance, query);
         return response;
     }
 
     private SearchResponse convertToResponse(Map<Float, Page> descSortedRelPagesRelevance, String query) {
         SearchResponse response = new SearchResponse();
-        List<SearchData> responseData = new ArrayList<>();
+        List<DetailedSearchItems> detailedList = new ArrayList<>();
 
-        if (!query.isEmpty()) {
-            for (Float relevance : descSortedRelPagesRelevance.keySet()) {
-                SearchData data = new SearchData();
-                DetailedSearchItems detailed = new DetailedSearchItems();
+        int counter = 0;
+        int limit = 5;
+        for (Float relevance : descSortedRelPagesRelevance.keySet()) {
+            if (counter == limit) break;
+            DetailedSearchItems detailed = new DetailedSearchItems();
 
-                Page page = descSortedRelPagesRelevance.get(relevance);
-                String content = page.getContent();
-                String snippet = snippetBuilder.buildSnippet(query, content);
+            Page page = descSortedRelPagesRelevance.get(relevance);
+            SiteEntity site = page.getSite();
+            String content = page.getContent();
+            String snippet = snippetBuilder.buildSnippet(query, content);
 
-                detailed.setUrl(page.getSite().getUrl());
-                detailed.setName(page.getSite().getName());
-                detailed.setUri(page.getPath());
-                detailed.setTitle(findTitle(content));
-                detailed.setSnippet(snippet);
-                detailed.setRelevance(relevance);
-
-                data.setResult(true);
-                data.setError("");
-                data.setCount(descSortedRelPagesRelevance.size());
-                data.setDetailed(detailed);
-                responseData.add(data);
-            }
-            response.setData(responseData);
-        } else {
-            SearchData data = new SearchData();
-            data.setResult(false);
-            data.setError("Задан пустой поисковый запро");
-            data.setCount(0);
-            data.setDetailed(null);
-            responseData.add(data);
-            response.setData(responseData);
+            detailed.setSite(site.getName());
+            detailed.setSiteName(site.getName());
+            detailed.setUri(page.getPath());
+            detailed.setTitle(findTitle(content));
+            detailed.setSnippet(snippet);
+            detailed.setRelevance(relevance);
+            detailedList.add(detailed);
+            counter++;
         }
+        response.setResult(true);
+        response.setError("");
+        response.setCount(descSortedRelPagesRelevance.size());
+        response.setData(detailedList);
+
+        return response;
+    }
+
+    private SearchResponse failedResponse() {
+        SearchResponse response = new SearchResponse();
+        response.setResult(false);
+        response.setError("Задан пустой поисковый запрос");
+        response.setCount(0);
+        response.setData(new ArrayList<>());
         return response;
     }
 
     private List<Lemma> sortLemmasByFrequency(Map<String, Integer> requestLemmas) {
         List<Lemma> lemmas = new ArrayList<>();
-        requestLemmas.keySet().forEach(nameOfLemma -> {
-            Lemma lemma = lemmaRepository.findLemmaByName(nameOfLemma);
+        for (String lemmaName : requestLemmas.keySet()) {
+            Lemma lemma = lemmaRepository.findLemmaByName(lemmaName);
             lemmas.add(lemma);
-        });
+        }
         List<Lemma> sortedLemmas = lemmas.stream().sorted((lemma1, lemma2) ->
                 lemma1.getFrequency().compareTo(lemma2.getFrequency())).collect(Collectors.toList());
         return sortedLemmas;
@@ -100,6 +105,15 @@ public class SearchServiceImpl implements SearchService {
             pagesIdContainsAllLemmas.retainAll(pagesIdContainsLemma);
         }
         return pagesIdContainsAllLemmas.isEmpty() ? new ArrayList<>() : pagesIdContainsAllLemmas;
+    }
+
+    private List<Long> collectPagesIdContainsLemma(List<Lemma> sortedLemmas, int listIndex) {
+        List<Index> indexesContainsLemma = indexRepository.findAllIndexContains(sortedLemmas.get(listIndex).getId());
+        List<Long> pagesIdContainsRareLemma = new ArrayList<>();
+        for (Index index : indexesContainsLemma) {
+            pagesIdContainsRareLemma.add(index.getPage().getId());
+        }
+        return pagesIdContainsRareLemma;
     }
 
     private Map<Page, Float> calculateAbsPagesRelevance(List<Long> pagesIdContainsAllLemmas) {
@@ -124,21 +138,12 @@ public class SearchServiceImpl implements SearchService {
         return relPagesRelevance;
     }
 
-    public Map<Float, Page> descSortRelPagesRelevance(Map<Page, Float> relPagesRelevance) {
+    private Map<Float, Page> descSortRelPagesRelevance(Map<Page, Float> relPagesRelevance) {
         Map<Float, Page> descSortedRelPagesRelevance = new TreeMap<>(Collections.reverseOrder());
         for (Page page : relPagesRelevance.keySet()) {
             descSortedRelPagesRelevance.put(relPagesRelevance.get(page), page);
         }
         return descSortedRelPagesRelevance;
-    }
-
-    private List<Long> collectPagesIdContainsLemma(List<Lemma> sortedLemmas, int listIndex) {
-        List<Index> indexesContainsLemma = indexRepository.findAllIndexContains(sortedLemmas.get(listIndex).getId());
-        List<Long> pagesIdContainsRareLemma = new ArrayList<>();
-        for (Index index : indexesContainsLemma) {
-            pagesIdContainsRareLemma.add(index.getPage().getId());
-        }
-        return pagesIdContainsRareLemma;
     }
 
     private String findTitle(String content) {

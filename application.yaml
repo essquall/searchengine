@@ -16,11 +16,9 @@ spring:
 
 indexing-settings:
   sites:
-#    - url: https://www.lenta.ru/
-#      name: Лента.ру
-#    - url: https://skillbox.ru/
-#      name: Skillbox
     - url: http://www.playback.ru/
       name: PlayBack.Ru
 #    - url: https://volochek.life/
 #      name: Volchara.Ru
+  userAgent: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referrer: http://google.com
