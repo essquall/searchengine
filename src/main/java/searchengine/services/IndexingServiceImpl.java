@@ -19,9 +19,7 @@ import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
 import java.io.IOException;
-import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,17 +33,17 @@ public class IndexingServiceImpl implements IndexingService {
 
     private final SitesList sites;
     private final UserAgent agent;
+
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
 
-    private IndexingServiceImpl service;
     public static AtomicBoolean isIndexing = new AtomicBoolean(false);
 
     @Override
     public IndexingResponse startIndexing() {
-        clearData();
+        clearData();//!!!!!
         isIndexing.set(true);
         sites.getSites().forEach(site -> {
             saveSite(site);
@@ -79,28 +77,32 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public IndexingResponse indexPage(String pagePath) {
         AtomicBoolean isContainSite = new AtomicBoolean(false);
-        isIndexing.set(true);
-
-        String path = decodePath(pagePath);
-        String rootUrl = findRootUrl(path);
-        Site site = findConfigSite(rootUrl);
-
-        if (site != null) {
-            isContainSite.set(true);
-            saveSite(site);
-            savePage(path);
-            changeStatusTypeAfterParse(site);
-            isIndexing.set(false);
+        try {
+            isIndexing.set(true);
+            String path = decodePath(pagePath);
+            String rootUrl = findRootUrl(path);
+            Site site = findConfigSite(rootUrl);
+            if (site != null) {
+                isContainSite.set(true);
+                saveSite(site);
+                savePage(path);
+                changeStatusType(site);
+                isIndexing.set(false);
+            }
+        } catch (InterruptedException e) {
+            System.out.println(Thread.currentThread().getName()
+                    + " has been interrupted");
+        } catch (IOException e) {
+            handleLastError(pagePath);
         }
-
         IndexingResponse response = new IndexingResponse();
         if (isContainSite.get()) {
             response.setResult(true);
             response.setError("");
         } else {
             response.setResult(false);
-            response.setError("Данная страница находится за пределами сайтов, " +
-                    "указанных в конфигурационном файле");
+            response.setError("Данная страница находится за пределами сайтов,"
+                    + " указанных в конфигурационном файле");
         }
         return response;
     }
@@ -115,34 +117,29 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
-    public void savePage(String path) {
-        //Thread stop condition
+    public void savePage(String path) throws InterruptedException, IOException {
         if (!isIndexing.get()) {
-            return;
+            throw new InterruptedException();
         }
         String rootUrl = findRootUrl(path);
         String shortcut = cutRootUrl(rootUrl, path);
-        try {
-            Connection.Response response = Jsoup.connect(path)
-                    .userAgent(agent.getUserAgent())
-                    .referrer(agent.getReferrer()).execute();
-            Document document = response.parse();
-            SiteEntity site = siteRepository.findSiteByUrl(rootUrl);
 
-            Page page = new Page();
-            page.setPath(shortcut);
-            page.setSite(site);
-            page.setContent(document.html());
-            page.setCode(response.statusCode());
-            updateStatusTime(site);
-            pageRepository.save(page);
+        Connection.Response response = Jsoup.connect(path)
+                .userAgent(agent.getUserAgent())
+                .referrer(agent.getReferrer()).execute();
+        Document document = response.parse();
+        SiteEntity site = siteRepository.findSiteByUrl(rootUrl);
 
-            if (!checkResponseCode(page)) {
-                saveLemmaAndIndex(page);
-            }
-        } catch (IOException e) {
-            System.out.println(e + " " + path);
-            handleLastError(path);
+        Page page = new Page();
+        page.setPath(shortcut);
+        page.setSite(site);
+        page.setContent(document.html());
+        page.setCode(response.statusCode());
+        updateStatusTime(site);
+        pageRepository.save(page);
+
+        if (!checkResponseCode(page)) {
+            saveLemmaAndIndex(page);
         }
     }
 
@@ -150,7 +147,9 @@ public class IndexingServiceImpl implements IndexingService {
         LemmaCollector searcher = new LemmaCollector();
         Map<String, Integer> lemmas = searcher.collectLemmas(page.getContent());
         lemmas.forEach((name, count) -> {
-            Lemma lemma = lemmaRepository.findLemmaByName(name);
+            long siteId = page.getSite().getId();
+            Lemma lemma = lemmaRepository.findLemmaByNameAndSiteId(name, siteId);
+
             if (lemma == null) {
                 lemma = new Lemma();
                 lemma.setLemma(name);
@@ -169,17 +168,18 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     private void startParseSite(Site site) {
-        service = new IndexingServiceImpl(sites, agent, siteRepository, pageRepository, lemmaRepository, indexRepository);//!
+        IndexingService service = new IndexingServiceImpl(sites, agent,
+                siteRepository, pageRepository, lemmaRepository, indexRepository);//!!!!
         new Thread(() -> {
             TreeSite treeSite = new TreeSite(site.getUrl());
-            SiteParser parse = new SiteParser(treeSite, service);
+            SiteParser parse = new SiteParser(treeSite, service, agent);
             new ForkJoinPool().invoke(parse);
-            changeStatusTypeAfterParse(site);
+            changeStatusType(site);
             isIndexing.set(false);
         }).start();
     }
 
-    private void changeStatusTypeAfterParse(Site site) {
+    private void changeStatusType(Site site) {
         if (isIndexing.get()) {
             SiteEntity siteEntity = siteRepository.findSiteByUrl(site.getUrl());
             siteEntity.setType(StatusType.INDEXED);
@@ -194,35 +194,19 @@ public class IndexingServiceImpl implements IndexingService {
         }
     }
 
-    @Override
-    public Document getDocument(String url) {
-        Document document = null;
-        try {
-            Thread.sleep(100);
-            document = Jsoup.connect(url).userAgent(agent.getUserAgent())
-                    .referrer(agent.getReferrer()).get();
-        } catch (InterruptedException | SocketTimeoutException | UnknownHostException e) {
-            System.out.println(e + " " + url);
-        } catch (IOException e) {
-            System.out.println(e + " " + url);
-            handleLastError(url);
-        }
-        return document;
-    }
-
-    private void handleLastError(String url) {
+    public void handleLastError(String url) {
         String rootUrl = findRootUrl(url);
-        SiteEntity newSite = siteRepository.findSiteByUrl(rootUrl);
-        newSite.setLastError("Failure of indexing");
-        newSite.setType(StatusType.FAILED);
-        siteRepository.save(newSite);
+        SiteEntity site = siteRepository.findSiteByUrl(rootUrl);
+        site.setLastError("Failure of indexing");
+        site.setType(StatusType.FAILED);
+        siteRepository.save(site);
     }
 
     private void clearData() {
-        indexRepository.deleteAll();
-        lemmaRepository.deleteAll();
-        pageRepository.deleteAll();
-        siteRepository.deleteAll();
+        indexRepository.deleteAllInBatch();
+        lemmaRepository.deleteAllInBatch();
+        pageRepository.deleteAllInBatch();
+        siteRepository.deleteAllInBatch();
     }
 
     private Site findConfigSite(String url) {

@@ -1,10 +1,10 @@
 package searchengine.dto.indexing;
 
-import lombok.Getter;
+import lombok.Data;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Getter
+@Data
 public class TreeSite {
 
     private String rootUrl;

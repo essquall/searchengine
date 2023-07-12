@@ -2,7 +2,6 @@ package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import searchengine.config.Site;
 import searchengine.dto.search.DetailedSearchItems;
 import searchengine.dto.search.SearchResponse;
 import searchengine.model.Index;
@@ -12,6 +11,7 @@ import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 import searchengine.utils.LemmaCollector;
 import searchengine.utils.SnippetBuilder;
 
@@ -23,44 +23,40 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService {
 
     private final LemmaCollector collector;
-    private final PageRepository pageRepository;
-    private final IndexRepository indexRepository;
-    private final LemmaRepository lemmaRepository;
     private final SnippetBuilder snippetBuilder;
 
-    @Override
-    public SearchResponse search(String query, Site site, int offset, int limit) {
-        SearchResponse response;
+    private final PageRepository pageRepository;
+    private final SiteRepository siteRepository;
+    private final IndexRepository indexRepository;
+    private final LemmaRepository lemmaRepository;
 
-        if (query.isEmpty()) response = failedResponse();
+    @Override
+    public SearchResponse search(String query, String site, int offset, int limit) {
+        if (query.isEmpty()) return convertToFailedResponse();
         Map<String, Integer> requestLemmas = collector.collectLemmas(query);
 
-        List<Lemma> sortedLemmas = sortLemmasByFrequency(requestLemmas);
+        List<Lemma> sortedLemmas = sortLemmasByFrequency(requestLemmas, site);
         List<Long> pagesIdContainsRequestLemmas = findPagesIdContainsRequestLemmas(sortedLemmas);
 
         Map<Page, Float> absPagesRelevance = calculateAbsPagesRelevance(pagesIdContainsRequestLemmas);
         Map<Page, Float> relPagesRelevance = calculateRelPagesRelevance(absPagesRelevance);
         Map<Float, Page> descSortedRelPagesRelevance = descSortRelPagesRelevance(relPagesRelevance);
-
-        response = convertToResponse(descSortedRelPagesRelevance, query);
-        return response;
+        return convertToResponse(descSortedRelPagesRelevance, query, limit);
     }
 
-    private SearchResponse convertToResponse(Map<Float, Page> descSortedRelPagesRelevance, String query) {
+    private SearchResponse convertToResponse(Map<Float, Page> descSortedRelPagesRelevance, String query, int limit) {
         SearchResponse response = new SearchResponse();
         List<DetailedSearchItems> detailedList = new ArrayList<>();
 
         int counter = 0;
-        int limit = 5;
         for (Float relevance : descSortedRelPagesRelevance.keySet()) {
             if (counter == limit) break;
-            DetailedSearchItems detailed = new DetailedSearchItems();
-
             Page page = descSortedRelPagesRelevance.get(relevance);
             SiteEntity site = page.getSite();
             String content = page.getContent();
             String snippet = snippetBuilder.buildSnippet(query, content);
 
+            DetailedSearchItems detailed = new DetailedSearchItems();
             detailed.setSite(site.getName());
             detailed.setSiteName(site.getName());
             detailed.setUri(page.getPath());
@@ -74,11 +70,10 @@ public class SearchServiceImpl implements SearchService {
         response.setError("");
         response.setCount(descSortedRelPagesRelevance.size());
         response.setData(detailedList);
-
         return response;
     }
 
-    private SearchResponse failedResponse() {
+    private SearchResponse convertToFailedResponse() {
         SearchResponse response = new SearchResponse();
         response.setResult(false);
         response.setError("Задан пустой поисковый запрос");
@@ -87,10 +82,16 @@ public class SearchServiceImpl implements SearchService {
         return response;
     }
 
-    private List<Lemma> sortLemmasByFrequency(Map<String, Integer> requestLemmas) {
+    private List<Lemma> sortLemmasByFrequency(Map<String, Integer> requestLemmas, String site) {
         List<Lemma> lemmas = new ArrayList<>();
         for (String lemmaName : requestLemmas.keySet()) {
-            Lemma lemma = lemmaRepository.findLemmaByName(lemmaName);
+            Lemma lemma;
+            if (site != null) {
+                long siteId = siteRepository.findSiteByUrl(site).getId();
+                lemma = lemmaRepository.findLemmaByNameAndSiteId(lemmaName, siteId);
+            } else {
+                lemma = lemmaRepository.findRareLemmaByName(lemmaName);
+            }
             lemmas.add(lemma);
         }
         List<Lemma> sortedLemmas = lemmas.stream().sorted((lemma1, lemma2) ->

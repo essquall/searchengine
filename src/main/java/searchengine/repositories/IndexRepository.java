@@ -1,8 +1,10 @@
 package searchengine.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.Index;
 
 import java.util.List;
@@ -21,4 +23,8 @@ public interface IndexRepository extends JpaRepository<Index, Long> {
     @Query(value = "SELECT SUM(lemmas_count) FROM index_numbers WHERE page_id = :pageId", nativeQuery = true)
     float countPageLemmas (long pageId);
 
+    @Modifying
+    @Transactional
+    @Query(value = "TRUNCATE TABLE index_numbers", nativeQuery = true)
+    void truncateTable();
 }

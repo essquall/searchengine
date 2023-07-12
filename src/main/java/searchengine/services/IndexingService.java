@@ -1,7 +1,8 @@
 package searchengine.services;
 
-import org.jsoup.nodes.Document;
 import searchengine.dto.indexing.IndexingResponse;
+
+import java.io.IOException;
 
 public interface IndexingService {
     IndexingResponse startIndexing();
@@ -10,7 +11,8 @@ public interface IndexingService {
 
     IndexingResponse indexPage(String pagePath);
 
-    void savePage(String child);
+    void savePage(String child) throws InterruptedException, IOException;
 
-    Document getDocument(String url);
+    void handleLastError(String url);
+
 }

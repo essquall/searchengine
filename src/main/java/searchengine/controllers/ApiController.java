@@ -10,6 +10,8 @@ import searchengine.services.IndexingService;
 import searchengine.services.SearchService;
 import searchengine.services.StatisticsService;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api")
 public class ApiController {
@@ -40,13 +42,13 @@ public class ApiController {
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<IndexingResponse> indexPage(@RequestBody String pagePath) {
+    public ResponseEntity<IndexingResponse> indexPage(@RequestBody String pagePath) throws IOException, InterruptedException {
         return ResponseEntity.ok(indexingService.indexPage(pagePath));
     }
 
     @GetMapping("/search")
     public ResponseEntity<SearchResponse> search(@RequestParam final String query,
-                                                 @RequestParam(required = false) final Site site,
+                                                 @RequestParam(required = false) final String site,
                                                  @RequestParam final Integer offset,
                                                  @RequestParam final Integer limit) {
         return ResponseEntity.ok(searchService.search(query, site, offset, limit));
