@@ -43,7 +43,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse startIndexing() {
-        clearData();//!!!!!
+        clearData();
         isIndexing.set(true);
         sites.getSites().forEach(site -> {
             saveSite(site);
@@ -76,6 +76,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public IndexingResponse indexPage(String pagePath) {
+        clearData();
         AtomicBoolean isContainSite = new AtomicBoolean(false);
         try {
             isIndexing.set(true);

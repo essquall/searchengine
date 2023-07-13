@@ -2,7 +2,6 @@ package searchengine.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import searchengine.config.Site;
 import searchengine.dto.indexing.IndexingResponse;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.statistics.StatisticsResponse;

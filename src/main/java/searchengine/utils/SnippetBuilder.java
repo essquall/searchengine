@@ -3,9 +3,6 @@ package searchengine.utils;
 import lombok.RequiredArgsConstructor;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.springframework.stereotype.Component;
-import searchengine.repositories.IndexRepository;
-import searchengine.services.IndexingService;
-
 import java.util.*;
 
 @Component

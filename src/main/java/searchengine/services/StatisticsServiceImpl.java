@@ -12,7 +12,6 @@ import searchengine.model.SiteEntity;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-import searchengine.services.StatisticsService;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
