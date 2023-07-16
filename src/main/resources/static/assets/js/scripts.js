@@ -1508,9 +1508,9 @@ var API = function(){
                         $this.next('.API-error').remove();
                     }
                     if ($this.next('.API-success').length) {
-                        $this.next('.API-success').text('Страница добавлена/обновлена успешно');
+                        $this.next('.API-success').text('Page added / updated successfully');
                     } else {
-                        $this.after('<div class="API-success">Страница поставлена в очередь на обновление / добавление</div>');
+                        $this.after('<div class="API-success">Page is waiting to be updated / added</div>');
                     }
                 } else {
                     if ($this.next('.API-success').length) {

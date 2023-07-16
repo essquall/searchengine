@@ -3,21 +3,18 @@ package searchengine.utils;
 import lombok.RequiredArgsConstructor;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.springframework.stereotype.Component;
+
 import java.util.*;
 
 @Component
 @RequiredArgsConstructor
 public class SnippetBuilder {
 
-    private final static String openTag = "<b>";
-    private final static String closeTag = "</b>";
-
-    private LuceneMorphology luceneMorph;
+    private final static String OPEN_TAG = "<b>";
+    private final static String CLOSE_TAG = "</b>";
     private final LemmaCollector lemmaCollector;
 
     public String buildSnippet(String request, String content) {
-        luceneMorph = lemmaCollector.createRussianMorphology();//!
-
         StringBuilder snippet = new StringBuilder();
         Set<String> requestLemmas = lemmaCollector.collectLemmas(request).keySet();
         String rusContent = content.replaceAll("([^А-я\\s])", " ")
@@ -43,6 +40,7 @@ public class SnippetBuilder {
     }
 
     private Map<String, String> splitContentToForms(String[] contentWords) {
+        LuceneMorphology luceneMorph = lemmaCollector.createRussianMorphology();
         Map<String, String> contentWordForms = new HashMap<>();
         for (String sourceForm : contentWords) {
             String lowCaseForm = sourceForm.toLowerCase();
@@ -61,7 +59,7 @@ public class SnippetBuilder {
     }
 
     private String boldingLemmas(String sourceForm, String snippetLine) {
-        String boldWord = openTag + sourceForm + closeTag;
+        String boldWord = OPEN_TAG + sourceForm + CLOSE_TAG;
         snippetLine = snippetLine.replaceAll(sourceForm, boldWord);
         return snippetLine;
     }

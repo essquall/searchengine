@@ -1,6 +1,10 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -41,9 +45,14 @@ public class IndexingServiceImpl implements IndexingService {
 
     public static AtomicBoolean isIndexing = new AtomicBoolean(false);
 
+    private static final Logger LOGGER = LogManager.getRootLogger();
+    private static final Marker ERRORS_MARKER = MarkerManager.getMarker("Errors");
+    private static final Marker ACTIONS_MARKER = MarkerManager.getMarker("Actions");
+
     @Override
     public IndexingResponse startIndexing() {
         clearData();
+        LOGGER.info(ACTIONS_MARKER, "Database has been cleared");
         isIndexing.set(true);
         sites.getSites().forEach(site -> {
             saveSite(site);
@@ -55,7 +64,8 @@ public class IndexingServiceImpl implements IndexingService {
             response.setError("");
         } else {
             response.setResult(false);
-            response.setError("Индексация уже запущена");
+            response.setError("Indexing already started");
+            LOGGER.error(ERRORS_MARKER, response.getError());
         }
         return response;
     }
@@ -66,7 +76,8 @@ public class IndexingServiceImpl implements IndexingService {
         IndexingResponse response = new IndexingResponse();
         if (isIndexing.get()) {
             response.setResult(false);
-            response.setError("Индексация не запущена");
+            response.setError("Indexing not running");
+            LOGGER.error(ERRORS_MARKER, response.getError());
         } else {
             response.setResult(true);
             response.setError("");
@@ -77,6 +88,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public IndexingResponse indexPage(String pagePath) {
         clearData();
+        LOGGER.info(ACTIONS_MARKER, "Database has been cleared");
         AtomicBoolean isContainSite = new AtomicBoolean(false);
         try {
             isIndexing.set(true);
@@ -91,8 +103,8 @@ public class IndexingServiceImpl implements IndexingService {
                 isIndexing.set(false);
             }
         } catch (InterruptedException e) {
-            System.out.println(Thread.currentThread().getName()
-                    + " has been interrupted");
+            e.getMessage();
+            LOGGER.error(ERRORS_MARKER, e.getMessage());
         } catch (IOException e) {
             handleLastError(pagePath);
         }
@@ -102,8 +114,9 @@ public class IndexingServiceImpl implements IndexingService {
             response.setError("");
         } else {
             response.setResult(false);
-            response.setError("Данная страница находится за пределами сайтов,"
-                    + " указанных в конфигурационном файле");
+            response.setError("This page is located outside the sites" +
+                    " specified in the configuration file");
+            LOGGER.error(ERRORS_MARKER, response.getError());
         }
         return response;
     }
@@ -120,7 +133,8 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     public void savePage(String path) throws InterruptedException, IOException {
         if (!isIndexing.get()) {
-            throw new InterruptedException();
+            throw new InterruptedException(Thread.currentThread().getName()
+                    + " has been interrupted");
         }
         String rootUrl = findRootUrl(path);
         String shortcut = cutRootUrl(rootUrl, path);
@@ -170,7 +184,8 @@ public class IndexingServiceImpl implements IndexingService {
 
     private void startParseSite(Site site) {
         IndexingService service = new IndexingServiceImpl(sites, agent,
-                siteRepository, pageRepository, lemmaRepository, indexRepository);//!!!!
+                siteRepository, pageRepository, lemmaRepository, indexRepository);
+        LOGGER.info(ACTIONS_MARKER, "Site parsing started");
         new Thread(() -> {
             TreeSite treeSite = new TreeSite(site.getUrl());
             SiteParser parse = new SiteParser(treeSite, service, agent);
@@ -185,22 +200,26 @@ public class IndexingServiceImpl implements IndexingService {
             SiteEntity siteEntity = siteRepository.findSiteByUrl(site.getUrl());
             siteEntity.setType(StatusType.INDEXED);
             siteRepository.save(siteEntity);
+            LOGGER.info(ACTIONS_MARKER, "Site has been indexed");
         } else {
             List<SiteEntity> notIndexedSites = siteRepository.findNotIndexedSites();
             notIndexedSites.forEach(newSite -> {
                 newSite.setType(StatusType.FAILED);
-                newSite.setLastError("Индексация остановлена пользователем");
+                newSite.setLastError("User stopped indexing");
                 siteRepository.save(newSite);
+                LOGGER.error(ERRORS_MARKER, newSite.getLastError());
             });
         }
     }
 
+    @Override
     public void handleLastError(String url) {
         String rootUrl = findRootUrl(url);
         SiteEntity site = siteRepository.findSiteByUrl(rootUrl);
         site.setLastError("Failure of indexing");
         site.setType(StatusType.FAILED);
         siteRepository.save(site);
+        LOGGER.error(ERRORS_MARKER, site.getLastError());
     }
 
     private void clearData() {

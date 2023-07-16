@@ -49,7 +49,7 @@ public class SiteParser extends RecursiveAction {
         } catch (IOException e) {
             service.handleLastError(url);
         } catch (InterruptedException e) {
-            System.out.println(Thread.currentThread().getName() + " has been interrupted");
+            e.getMessage();
         }
     }
 

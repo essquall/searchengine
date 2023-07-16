@@ -1,6 +1,10 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
 import org.springframework.stereotype.Service;
 import searchengine.dto.search.DetailedSearchItems;
 import searchengine.dto.search.SearchResponse;
@@ -30,9 +34,14 @@ public class SearchServiceImpl implements SearchService {
     private final IndexRepository indexRepository;
     private final LemmaRepository lemmaRepository;
 
+    private static final Logger LOGGER = LogManager.getRootLogger();
+    private static final Marker ERRORS_MARKER = MarkerManager.getMarker("Errors");
+    private static final Marker QUERIES_MARKER = MarkerManager.getMarker("Queries");
+
     @Override
     public SearchResponse search(String query, String site, int offset, int limit) {
         if (query.isEmpty()) return convertToFailedResponse();
+        LOGGER.info(QUERIES_MARKER, query);
         Map<String, Integer> requestLemmas = collector.collectLemmas(query);
 
         List<Lemma> sortedLemmas = sortLemmasByFrequency(requestLemmas, site);
@@ -76,9 +85,10 @@ public class SearchServiceImpl implements SearchService {
     private SearchResponse convertToFailedResponse() {
         SearchResponse response = new SearchResponse();
         response.setResult(false);
-        response.setError("Задан пустой поисковый запрос");
+        response.setError("Empty search query set");
         response.setCount(0);
         response.setData(new ArrayList<>());
+        LOGGER.error(ERRORS_MARKER, response.getError());
         return response;
     }
 
