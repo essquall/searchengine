@@ -1,6 +1,5 @@
 # searchengine
-![Java](https://img.shields.io/badge/-Java-0a0a0a?style=for-the-badge&logo=Java)
-![Spring Boot](https://img.shields.io/badge/-springboot-0a0a0a?style=for-the-badge&logo=springboot)
+<img src="https://img.shields.io/badge/Java-black?style=for-the-badge&logo=java&logoColor=black"/> <img src="https://img.shields.io/badge/Spring Boot-black?style=for-the-badge&logo=Spring Boot&logoColor=green"/> <img src="https://img.shields.io/badge/Hibernate-black?style=for-the-badge&logo=Hibernate&logoColor=green"/><img src="https://img.shields.io/badge/MySQL-black?style=for-the-badge&logo=MySQL&logoColor=blue"/>
 
 
 ## Table of contents
