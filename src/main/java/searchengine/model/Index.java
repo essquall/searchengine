@@ -14,7 +14,7 @@ public class Index {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     private Page page;
 
     @ManyToOne(fetch = FetchType.LAZY)

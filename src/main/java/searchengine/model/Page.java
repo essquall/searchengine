@@ -15,7 +15,7 @@ public class Page {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     private SiteEntity site;
 
     @Column(name = "path", nullable = false, unique = true, columnDefinition = "VARCHAR(300)")

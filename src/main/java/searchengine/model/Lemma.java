@@ -14,7 +14,7 @@ public class Lemma {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     private SiteEntity site;
 
     @Column(nullable = false, columnDefinition = "VARCHAR(255)")
