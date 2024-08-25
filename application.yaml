@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     username: root
-    password: Zabava532600
-    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+    password: root
+    url: root
   jpa:
     properties:
       hibernate:
